@@ -1,0 +1,44 @@
+name: Watch menu
+
+on:
+  schedule:
+    # Every 5 minutes, all day, Monday to Thursday in Turkey.
+    # After the week's message is sent, runs stop without checking the page.
+    - cron: "2-59/5 * * * 1-4"
+      timezone: "Europe/Istanbul"
+  workflow_dispatch:
+    inputs:
+      test_alert:
+        description: Send a test Telegram message
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: watch-menu
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check the page
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TEST_ALERT: ${{ inputs.test_alert }}
+        run: python3 watch.py
+
+      - name: Save the state
+        run: |
+          if [ -n "$(git status --porcelain state.txt)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add state.txt
+            git commit -m "Update page state"
+            git push
+          fi
