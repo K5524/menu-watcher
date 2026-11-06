@@ -86,8 +86,8 @@ def send_telegram(message):
 
 def stop_after_failed_check(reason):
     print(f"::warning::Page check failed: {reason}")
-    # Manual runs fail visibly. Scheduled runs stay quiet and try again next time.
-    sys.exit(1 if os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch" else 0)
+    # Test runs fail visibly. Other runs stay quiet and try again next time.
+    sys.exit(1 if os.environ.get("TEST_ALERT") == "true" else 0)
 
 
 def main():

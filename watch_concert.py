@@ -152,7 +152,8 @@ def main():
         if new_state != state:
             save_state(new_state)
 
-    if failures and os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch":
+    # Test runs fail visibly. Other runs stay quiet and try again next time.
+    if failures and testing:
         sys.exit(1)
 
 
