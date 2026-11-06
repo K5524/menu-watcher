@@ -1,0 +1,52 @@
+name: Watch concert
+
+on:
+  schedule:
+    # Every 15 minutes. watch_concert.py stops the checks on December 30.
+    - cron: "4-59/15 * * * *"
+      timezone: "Europe/Istanbul"
+  workflow_dispatch:
+    inputs:
+      test_alert:
+        description: Send a test Telegram message
+        type: boolean
+        default: false
+
+permissions:
+  actions: write
+  contents: write
+
+concurrency:
+  group: watch-concert
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check the seats
+        id: check
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TEST_ALERT: ${{ inputs.test_alert }}
+        run: python3 watch_concert.py
+
+      - name: Save the state
+        run: |
+          if [ -n "$(git status --porcelain concert_state.json)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add concert_state.json
+            git commit -m "Update concert state"
+            git pull --rebase origin "$GITHUB_REF_NAME"
+            git push origin "HEAD:$GITHUB_REF_NAME"
+          fi
+
+      - name: Turn off after the end date
+        if: steps.check.outputs.finished == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow disable "$GITHUB_WORKFLOW" --repo "$GITHUB_REPOSITORY"
